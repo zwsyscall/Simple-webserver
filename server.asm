@@ -294,13 +294,16 @@ read_file:
     mov r10, 0
     syscall
     
-    ; lazy panic
-    cmp rax, -1
-    je panic
-    
-    mov rdi, rax
     pop rdx
     pop rsi
+    
+    ; We should get proper error handling here
+    cmp rax, -2     ; File does not exist
+    jne read_data
+    ret
+
+    read_data:
+    mov rdi, rax
     call read
     push rax
     call close
