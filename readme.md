@@ -1,4 +1,4 @@
-# Shrimple HTTP webserver writte in in x86_64 assembly
+# Shrimple HTTP webserver written in in x86_64 assembly
 Simple project done for practice, there are issues.
 
 I intend to improve on this over time, but we'll see what actually happens.
