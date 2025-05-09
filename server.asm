@@ -12,7 +12,6 @@ section .rodata
     content_type_len equ $ - content_type
 
     err_header db "HTTP/1.1 404 Not Found", 0xd, 0xa 
-    err_header_len equ $ - err_header
 
 sockaddr_ipv4:
     dw  0x0002      ; family
