@@ -2,6 +2,9 @@ section .data
     ok_header db "HTTP/1.1 200 OK", 0xd, 0xa ; 0xd = \r, 0xa = \n
     ok_header_len equ $ - ok_header
     
+    not_found_header db "HTTP/1.1 404 Not Found", 0xd, 0xa
+    not_found_header_len equ $ - not_found_header
+
     content_length db "Content-Length: "
     content_length_len equ $ - content_length
 
