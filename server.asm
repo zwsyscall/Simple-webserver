@@ -259,11 +259,8 @@ _start:
     rep stosb
 
     ; We go agane
+    ; We jump back up
     jmp main_loop
-
-    ; Ret return code
-    mov rdi, rax
-    jmp exit
 
 ;          RDI
 ; fn close(handle: handle)
