@@ -2,6 +2,9 @@ section .data
     ok_header db "HTTP/1.1 200 OK", 0xd, 0xa ; 0xd = \r, 0xa = \n
     ok_header_len equ $ - ok_header
     
+    not_found_header db "HTTP/1.1 404 Not Found", 0xd, 0xa
+    not_found_header_len equ $ - not_found_header
+
     content_length db "Content-Length: "
     content_length_len equ $ - content_length
 
@@ -142,9 +145,17 @@ _start:
     mov rdx, file_data_length - header_len
     call read_file
 
-    cmp rax, -1
-    je panic ; todo: Change this to jump to a 404 return
+    ; 404
+    cmp rax, -2
+    je return_404
+    
+    ; Other errors
+    cmp rax, 0
+    jl panic
 
+    jmp return_200
+
+    return_200:
     ; Write the HTTP OK header to the header buffer
     mov rdi, header_buffer
     mov rsi, ok_header
@@ -200,7 +211,39 @@ _start:
     ; Write the return
     call write
     
-    ; Now, let's close the connection handle
+    jmp cleanup
+
+    
+    return_404:
+
+    ; Write the HTTP OK header to the header buffer
+    mov rdi, header_buffer
+    mov rsi, not_found_header
+    mov rdx, not_found_header_len
+    call str_cp
+    
+    ; Write the Content-Length header preface into the return buffer
+    mov rsi, content_length
+    mov rdx, content_length_len
+    call str_cp
+
+    mov byte [rdi], '0' ; Zero length
+    mov word [rdi + 1], 0x0a0d ; \r\n
+
+    mov rdi, header_buffer
+    call println
+
+    mov rsi, rdi
+    mov rdi, [rbx + 0x08]
+    call write
+
+    jmp cleanup
+
+
+    cleanup:
+    
+    ; Let's close the connection handle
+    mov rdi, [rbx + 0x08]
     call close
 
     ; Overwrite the return buffer with nulls
@@ -215,12 +258,8 @@ _start:
     mov rcx, 100
     rep stosb
 
-    ; We go agane
+    ; We jump back up
     jmp main_loop
-
-    ; Ret return code
-    mov rdi, rax
-    jmp exit
 
 ;          RDI
 ; fn close(handle: handle)
@@ -283,21 +322,27 @@ read:
 
 ;           rdi         rsi            rdx
 ; read_file(path: &str, buffer: &[u8], buffer_len: usize) -> status
-read_file: 
+read_file:
     push rsi
     push rdx
-    mov rax, 0x2 ; open
-    mov rsi, 0
+    
+    mov rsi, rdi    ; filepath
+    mov rax, 257    ; openat
+    mov rdi, -100   ; AT_FDCWD
     mov rdx, 0
+    mov r10, 0
     syscall
     
-    ; lazy panic
-    cmp rax, -1
-    je panic
-    
-    mov rdi, rax
     pop rdx
     pop rsi
+    
+    ; We should get proper error handling here
+    cmp rax, -2     ; File does not exist
+    jne read_data
+    ret
+
+    read_data:
+    mov rdi, rax
     call read
     push rax
     call close
