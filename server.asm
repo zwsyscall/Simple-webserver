@@ -84,13 +84,16 @@ _start:
     mov rsi, request_data   ; Load the request_data buffer to rsi
     mov rdx, 256            ; Length of the buffer (ish)
     call read               ; Read the user request
-
+    
+    ; Save client data
+    push rsi
+    
     ; Load read error message
     mov rsi, exit_read
     call unwrap
     
-    ; Return the client request data 
-    mov rdi, rsi
+    ; Return the client request data
+    pop rdi
     ; Print the request
     call println
 
