@@ -145,9 +145,17 @@ _start:
     mov rdx, file_data_length - header_len
     call read_file
 
-    cmp rax, -1
-    je panic ; todo: Change this to jump to a 404 return
+    ; 404
+    cmp rax, -2
+    je return_404
+    
+    ; Other errors
+    cmp rax, 0
+    jl panic
 
+    jmp return_200
+
+    return_200:
     ; Write the HTTP OK header to the header buffer
     mov rdi, header_buffer
     mov rsi, ok_header
@@ -203,7 +211,12 @@ _start:
     ; Write the return
     call write
     
-    ; Now, let's close the connection handle
+    jmp cleanup
+    return_404:
+    cleanup:
+    
+    ; Let's close the connection handle
+    mov rdi, [rbx + 0x08]
     call close
 
     ; Overwrite the return buffer with nulls
