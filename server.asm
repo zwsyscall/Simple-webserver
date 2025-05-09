@@ -27,7 +27,6 @@ sockaddr_ipv4:
     exit_read db "Failed reading on handle", 0xA, 0x0
 
 section .bss
-state_table: resq 7
 header_buffer: resb 100
 
 request_data: resb 1024
@@ -39,85 +38,60 @@ header_len equ 100
 section .text
     global _start
 
-; RBX:
-; [0x00] *socket_handle
-; [0x08] *connection_handle
-; [0x10] *exit_socket
-; [0x18] *exit_bind
-; [0x20] *exit_listen
-; [0x28] *exit_accept
-; [0x30] *exit_read
-
 _start:
     ; Load the state table
-    mov rbx, state_table
     
-    mov qword [rbx + 0x10], exit_socket
-    mov qword [rbx + 0x18], exit_bind
-    mov qword [rbx + 0x20], exit_listen
-    mov qword [rbx + 0x28], exit_accept
-    mov qword [rbx + 0x30], exit_read
-
     ; Fetch handle to socket
-    call socket
+    call socket ; -> handle
 
     ; Load socket error message
-    mov rsi, [rbx + 0x10]
-    cmp rax, -1
-    je panic
-
-    ; Move socket handle to RBX's state table
-    mov [rbx], rax
+    mov rsi, exit_socket
+    call unwrap
 
     ; Copy socket handle to bind
-    mov rdi, [rbx]
+    mov rdi, rax
     call bind
 
     ; Load bind error message
-    mov rsi, [rbx + 0x18]
-    cmp rax, -1
-    je panic
+    mov rsi, exit_bind
+    call unwrap
    
     ; Copy socket handle for listen
-    mov rdi, [rbx]
     call listen
 
     ; Load listen error message
-    mov rsi, [rbx + 0x20]
-    cmp rax, -1
-    je panic
+    mov rsi, exit_listen
+    call unwrap
 
     ; Now that we have done the setup, this is the main "meat" of this program.
-    main_loop:
+    push rdi ; Top of stack now holds the SOCKET handle
 
-    mov rdi, [rbx] ; Load socket handle
+    main_loop:   
+    pop rdi
+    push rdi
+
     xor rsi, rsi ; We don't care about the client's address, so we push a null pointer
     xor rdx, rdx ; and a null length.
     call accept
 
     ; Load accept error message
-    mov rsi, [rbx + 0x28]
-    cmp rax, -1
-    je panic
+    mov rsi, exit_accept
+    call unwrap
+    mov rbx, rax            ; Store the connection handle in RBX for the duration of the loop
+    
+    ;push rax ; Save connection handle
 
-    ; At this point, rax contains the connection handle.
-    ; Copy it to the rbx state.
-    mov [rbx + 0x8], rax
-
-    mov rdi, [rbx + 0x08]   ; Load connection handle
+    mov rdi, rax            ; Load connection handle
     mov rsi, request_data   ; Load the request_data buffer to rsi
     mov rdx, 256            ; Length of the buffer (ish)
     call read               ; Read the user request
 
-    push rsi                ; Save ptr to the returned data in rsi
-    
     ; Load read error message
-    mov rsi, [rbx + 0x30]
-    cmp rax, -1
-    je panic
+    mov rsi, exit_read
+    call unwrap
     
     ; Return the client request data 
-    pop rdi
+    mov rdi, rsi
     ; Print the request
     call println
 
@@ -207,12 +181,10 @@ _start:
     call println
 
     mov rsi, rdi
-    mov rdi, [rbx + 0x08] ; Return connection handle to rdi
-    ; Write the return
+    mov rdi, rbx
     call write
     
     jmp cleanup
-
     
     return_404:
 
@@ -234,16 +206,15 @@ _start:
     call println
 
     mov rsi, rdi
-    mov rdi, [rbx + 0x08]
+    mov rdi, rbx
     call write
 
     jmp cleanup
 
-
+    ; RDI: connection handle
     cleanup:
-    
+
     ; Let's close the connection handle
-    mov rdi, [rbx + 0x08]
     call close
 
     ; Overwrite the return buffer with nulls
@@ -472,7 +443,12 @@ println:
 
 ;          RDI               RSI
 ; fn panic(exit_code: usize, message: &str)
-panic:
+unwrap:
+    cmp rax, -1
+    je panic
+    ret
+
+    panic:
     ; Save exit code, message
     push rdi
     
