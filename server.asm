@@ -212,7 +212,34 @@ _start:
     call write
     
     jmp cleanup
+
+    
     return_404:
+
+    ; Write the HTTP OK header to the header buffer
+    mov rdi, header_buffer
+    mov rsi, not_found_header
+    mov rdx, not_found_header_len
+    call str_cp
+    
+    ; Write the Content-Length header preface into the return buffer
+    mov rsi, content_length
+    mov rdx, content_length_len
+    call str_cp
+
+    mov byte [rdi], '0' ; Zero length
+    mov word [rdi + 1], 0x0a0d ; \r\n
+
+    mov rdi, header_buffer
+    call println
+
+    mov rsi, rdi
+    mov rdi, [rbx + 0x08]
+    call write
+
+    jmp cleanup
+
+
     cleanup:
     
     ; Let's close the connection handle
