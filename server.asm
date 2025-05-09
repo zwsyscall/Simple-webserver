@@ -1,4 +1,4 @@
-section .data
+section .rodata
     ok_header db "HTTP/1.1 200 OK", 0xd, 0xa ; 0xd = \r, 0xa = \n
     ok_header_len equ $ - ok_header
     
