@@ -283,12 +283,15 @@ read:
 
 ;           rdi         rsi            rdx
 ; read_file(path: &str, buffer: &[u8], buffer_len: usize) -> status
-read_file: 
+read_file:
     push rsi
     push rdx
-    mov rax, 0x2 ; open
-    mov rsi, 0
+    
+    mov rsi, rdi    ; filepath
+    mov rax, 257    ; openat
+    mov rdi, -100   ; AT_FDCWD
     mov rdx, 0
+    mov r10, 0
     syscall
     
     ; lazy panic
