@@ -258,7 +258,6 @@ _start:
     mov rcx, 100
     rep stosb
 
-    ; We go agane
     ; We jump back up
     jmp main_loop
 
